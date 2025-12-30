@@ -3,12 +3,12 @@ import { getGameWords } from './wordService';
 
 /**
  * Asigna roles y palabras a los jugadores (server-side)
- * Los ciudadanos ven la palabra secreta, el impostor NO
+ * Los ciudadanos ven la palabra secreta, undercover ve palabra similar, impostor NO ve nada
  */
 export function assignRoles(
   players: Player[],
   config: GameConfig
-): { players: Player[]; secretWord: string } {
+): { players: Player[]; secretWord: string; undercoverWord: string } {
   if (players.length < 2) {
     throw new Error('Se necesitan al menos 2 jugadores');
   }
@@ -19,13 +19,25 @@ export function assignRoles(
     throw new Error(`Número de impostores inválido (1-${maxImpostors})`);
   }
 
-  // 1. Obtener palabra secreta usando temas configurados
-  const { secretWord } = getGameWords(config.themes);
+  // 1. Obtener palabras usando temas configurados
+  const { secretWord, undercoverWord } = getGameWords(config.themes);
 
-  // 2. Seleccionar múltiples impostores aleatoriamente
+  const undercoverCount = config.undercoverCount || 0;
+  const totalSpecialRoles = config.impostorCount + undercoverCount;
+
+  if (totalSpecialRoles >= players.length) {
+    throw new Error('Debe haber al menos 1 ciudadano');
+  }
+
+  // 2. Seleccionar roles aleatoriamente
   const shuffled = [...players].sort(() => Math.random() - 0.5);
+
   const impostorIds = new Set(
     shuffled.slice(0, config.impostorCount).map(p => p.id)
+  );
+
+  const undercoverIds = new Set(
+    shuffled.slice(config.impostorCount, config.impostorCount + undercoverCount).map(p => p.id)
   );
 
   // 3. Asignar roles y palabras
@@ -36,6 +48,14 @@ export function assignRoles(
         ...player,
         role: 'impostor' as const,
         word: undefined,
+        isDead: false,
+      };
+    } else if (undercoverIds.has(player.id)) {
+      // Undercover: ve palabra similar
+      return {
+        ...player,
+        role: 'undercover' as const,
+        word: undercoverWord,
         isDead: false,
       };
     } else {
@@ -49,13 +69,14 @@ export function assignRoles(
     }
   });
 
-  console.log(`🎮 Roles asignados: ${config.impostorCount} impostor(es)`);
-  console.log(`📝 Palabra secreta: "${secretWord}"`);
+  console.log(`🎮 Roles: ${config.impostorCount} impostor(es), ${undercoverCount} undercover`);
+  console.log(`📝 Palabra secreta: "${secretWord}" | Undercover: "${undercoverWord}"`);
   console.log(`🎨 Temas: ${config.themes.join(', ')}`);
 
   return {
     players: updatedPlayers,
     secretWord,
+    undercoverWord,
   };
 }
 

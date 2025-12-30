@@ -3,6 +3,7 @@ import {
   ClientToServerEvents,
   ServerToClientEvents,
   OnlinePhase,
+  VoteInfo,
 } from '../types';
 import * as roomService from '../services/roomService';
 import * as gameService from '../services/gameService';
@@ -125,12 +126,13 @@ export function setupSocketHandlers(
         }
 
         // ASIGNAR ROLES SERVER-SIDE con configuración
-        const { players, secretWord } = gameService.assignRoles(room.players, config);
+        const { players, secretWord, undercoverWord } = gameService.assignRoles(room.players, config);
 
         // Actualizar sala con config y resultados
         await roomService.updateRoom(code, {
           players,
           secretWord,
+          undercoverWord,
           phase: 'ASSIGNMENT',
           gameConfig: config,
         });
@@ -187,6 +189,16 @@ export function setupSocketHandlers(
         // Broadcast
         io.to(code).emit('room_updated', updatedRoom);
 
+        // Si entramos a VOTING, enviar estado inicial de votación
+        if (nextPhase === 'VOTING') {
+          const alivePlayers = room.players.filter(p => !p.isDead);
+          io.to(code).emit('voting_state', {
+            votes: [],
+            totalVoters: alivePlayers.length,
+            voteCount: 0,
+          });
+        }
+
         console.log(`📍 Fase cambiada a ${nextPhase} en sala ${code}`);
       } catch (error: any) {
         console.error('❌ Error al cambiar fase:', error);
@@ -203,14 +215,11 @@ export function setupSocketHandlers(
           return;
         }
 
-        const voterId = await roomService.getPlayerIdBySocketId(
-          code,
-          socket.id
-        );
-        if (!voterId) {
-          socket.emit('error_msg', 'Jugador no encontrado');
-          return;
-        }
+        const voterId = await roomService.getPlayerIdBySocketId(code, socket.id);
+        if (!voterId) return;
+
+        const voter = room.players.find(p => p.id === voterId);
+        if (!voter) return;
 
         // Validar voto
         const validation = validator.validateVote(room, voterId, votedPlayerId);
@@ -219,39 +228,50 @@ export function setupSocketHandlers(
           return;
         }
 
-        // Guardar voto
-        await roomService.saveVote(code, voterId, votedPlayerId);
+        // Guardar voto con info del votante
+        await roomService.saveVote(code, voterId, voter.name, votedPlayerId);
 
-        // Verificar si todos votaron
+        // NEW: Broadcast en tiempo real
+        const voteInfo: VoteInfo = {
+          voterId,
+          voterName: voter.name,
+          voterInitials: voter.name.substring(0, 2).toUpperCase(),
+          votedPlayerId,
+          timestamp: Date.now(),
+        };
+
+        io.to(code).emit('vote_cast', voteInfo);
+
         const votes = await roomService.getVotes(code);
-        const alivePlayers = room.players.filter((p) => !p.isDead);
+        const alivePlayers = room.players.filter(p => !p.isDead);
+
+        // NEW: Broadcast voting state
+        io.to(code).emit('voting_state', {
+          votes: await roomService.getVotesInfo(code),
+          totalVoters: alivePlayers.length,
+          voteCount: votes.size,
+        });
 
         if (votes.size === alivePlayers.length) {
-          // TODOS VOTARON - Calcular resultado
           const { winner } = gameService.calculateVoteResult(votes, room.players);
 
-          // Actualizar sala con ganador
           await roomService.updateRoom(code, {
             winner,
             phase: 'RESULT',
           });
 
-          // Limpiar votos
           await roomService.clearVotes(code);
 
           const updatedRoom = await roomService.getRoom(code);
-          if (!updatedRoom) return;
-
-          // Broadcast resultado
-          io.to(code).emit('room_updated', updatedRoom);
+          if (updatedRoom) {
+            io.to(code).emit('room_updated', updatedRoom);
+          }
 
           console.log(`🏆 Votación completa en sala ${code}. Ganador: ${winner}`);
         } else {
-          // Aún faltan votos
           console.log(
             `🗳️  Voto registrado en sala ${code}. ${votes.size}/${alivePlayers.length}`
           );
-          // Opcional: emitir evento de voto parcial
         }
       } catch (error: any) {
         console.error('❌ Error al votar:', error);
@@ -293,6 +313,7 @@ export function setupSocketHandlers(
           players: resetPlayers,
           winner: null,
           secretWord: '',
+          undercoverWord: '',
         });
 
         // Limpiar votos

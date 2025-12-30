@@ -227,9 +227,24 @@ export function validateGameConfig(
     return { valid: false, error: 'Debe haber al menos 1 impostor' };
   }
 
-  const maxImpostors = Math.floor(playerCount / 2);
-  if (config.impostorCount > maxImpostors) {
-    return { valid: false, error: `Máximo ${maxImpostors} impostores para ${playerCount} jugadores` };
+  // Validar undercover count
+  if (config.undercoverCount !== undefined) {
+    if (typeof config.undercoverCount !== 'number' || config.undercoverCount < 0) {
+      return { valid: false, error: 'Cantidad de undercover inválida' };
+    }
+  }
+
+  // Validar total de roles especiales
+  const undercoverCount = config.undercoverCount || 0;
+  const totalSpecialRoles = config.impostorCount + undercoverCount;
+
+  if (totalSpecialRoles >= playerCount) {
+    return { valid: false, error: 'Debe haber al menos 1 ciudadano' };
+  }
+
+  const maxSpecialRoles = Math.floor(playerCount * 0.6); // Max 60%
+  if (totalSpecialRoles > maxSpecialRoles) {
+    return { valid: false, error: `Máximo ${maxSpecialRoles} roles especiales` };
   }
 
   const validModes = ['classic', 'chaos', 'hardcore'];

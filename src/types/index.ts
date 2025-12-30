@@ -1,11 +1,12 @@
 // Tipos compartidos entre cliente y servidor
 
 export type OnlinePhase = 'LOBBY' | 'ASSIGNMENT' | 'DEBATE' | 'VOTING' | 'RESULT';
-export type Role = 'citizen' | 'impostor';
+export type Role = 'citizen' | 'impostor' | 'undercover';
 
 export interface GameConfig {
   themes: string[];
   impostorCount: number;
+  undercoverCount: number;
   gameMode: 'classic' | 'chaos' | 'hardcore';
 }
 
@@ -17,6 +18,8 @@ export interface Player {
   isDead: boolean;
   socketId: string;     // Socket ID actual
   lastSeen: number;     // Timestamp de última actividad (para reconexión)
+  avatar: string;       // Emoji del jugador
+  color: string;        // Color hexadecimal del jugador
 }
 
 export interface RoomData {
@@ -25,6 +28,7 @@ export interface RoomData {
   phase: OnlinePhase;
   players: Player[];
   secretWord: string;   // Palabra secreta del juego
+  undercoverWord: string; // Palabra para el rol encubierto
   winner: 'citizens' | 'impostor' | null;
   createdAt: number;    // Timestamp de creación
   lastActivity: number; // Timestamp de última actividad
@@ -41,11 +45,30 @@ export interface SocketAuthData {
   playerId: string;
 }
 
+export interface VoteInfo {
+  voterId: string;
+  voterName: string;
+  voterInitials: string;
+  votedPlayerId: string;
+  timestamp: number;
+}
+
+export interface VotingState {
+  votes: VoteInfo[];
+  totalVoters: number;
+  voteCount: number;
+}
+
 // Eventos Socket.IO (para documentación y type safety)
 export interface ServerToClientEvents {
   room_joined: (data: { room: RoomData; playerId: string }) => void;
   room_updated: (room: RoomData) => void;
   error_msg: (message: string) => void;
+
+  // Real-time voting events
+  vote_cast: (data: VoteInfo) => void;
+  voting_state: (data: VotingState) => void;
+
   player_disconnected: (data: {
     playerId: string;
     playerName: string;

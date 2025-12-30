@@ -3,6 +3,7 @@ import { config } from '../config/env';
 import { RoomData, Player, OnlinePhase } from '../types';
 import { generateRoomCode } from './wordService';
 import { v4 as uuidv4 } from 'uuid';
+import * as avatarService from './avatarService';
 
 // Helper: Generar código único de sala
 async function generateUniqueRoomCode(): Promise<string> {
@@ -34,6 +35,8 @@ export async function createRoom(
   const playerId = uuidv4();
   const now = Date.now();
 
+  const { avatar, color } = avatarService.assignPlayerAvatar(code, []);
+
   const host: Player = {
     id: playerId,
     name: playerName,
@@ -42,6 +45,8 @@ export async function createRoom(
     isDead: false,
     socketId: hostSocketId,
     lastSeen: now,
+    avatar,
+    color,
   };
 
   const room: RoomData = {
@@ -50,6 +55,7 @@ export async function createRoom(
     phase: 'LOBBY',
     players: [host],
     secretWord: '',
+    undercoverWord: '',
     winner: null,
     createdAt: now,
     lastActivity: now,
@@ -147,6 +153,8 @@ export async function addPlayerToRoom(
   const playerId = uuidv4();
   const now = Date.now();
 
+  const { avatar, color } = avatarService.assignPlayerAvatar(code, room.players);
+
   const newPlayer: Player = {
     id: playerId,
     name: playerName,
@@ -155,6 +163,8 @@ export async function addPlayerToRoom(
     isDead: false,
     socketId,
     lastSeen: now,
+    avatar,
+    color,
   };
 
   // Guardar jugador
@@ -199,6 +209,9 @@ export async function updatePlayer(
  * Elimina una sala completamente
  */
 export async function deleteRoom(code: string): Promise<void> {
+  // Limpiar avatares de la sala
+  avatarService.clearRoomAvatars(code);
+
   await redis.del(`room:${code}`);
   await redis.del(`room:${code}:players`);
   await redis.del(`room:${code}:sockets`);
@@ -217,6 +230,11 @@ export async function removePlayerFromRoom(
 ): Promise<void> {
   const player = await getPlayerById(code, playerId);
   if (!player) return;
+
+  // Liberar avatar
+  if (player.avatar && player.color) {
+    avatarService.releasePlayerAvatar(code, player.avatar, player.color);
+  }
 
   await redis.hdel(`room:${code}:players`, playerId);
   await redis.hdel(`room:${code}:sockets`, player.socketId);
@@ -300,22 +318,39 @@ export async function findRoomBySocketId(
 }
 
 /**
- * Guarda un voto
+ * Guarda un voto con información completa del votante
  */
 export async function saveVote(
   code: string,
   voterId: string,
+  voterName: string,
   votedPlayerId: string
 ): Promise<void> {
-  await redis.hset(`room:${code}:votes`, voterId, votedPlayerId);
+  const voteInfo = {
+    voterId,
+    voterName,
+    voterInitials: voterName.substring(0, 2).toUpperCase(),
+    votedPlayerId,
+    timestamp: Date.now(),
+  };
+
+  await redis.hset(`room:${code}:votes`, voterId, JSON.stringify(voteInfo));
 }
 
 /**
- * Obtiene todos los votos de una sala
+ * Obtiene todos los votos de una sala (legacy - retorna Map)
  */
 export async function getVotes(code: string): Promise<Map<string, string>> {
   const votesData = await redis.hgetall(`room:${code}:votes`);
   return new Map(Object.entries(votesData));
+}
+
+/**
+ * Obtiene todos los votos con información completa
+ */
+export async function getVotesInfo(code: string): Promise<any[]> {
+  const votesData = await redis.hgetall(`room:${code}:votes`);
+  return Object.values(votesData).map(v => JSON.parse(v));
 }
 
 /**

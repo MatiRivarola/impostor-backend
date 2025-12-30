@@ -74,6 +74,7 @@ const WORD_LISTS: Record<string, WordPair[]> = {
  */
 export function getGameWords(selectedThemeIds: string[]): {
   secretWord: string;
+  undercoverWord: string;
   themeLabel: string;
 } {
   // 1. Combinar listas de todos los temas seleccionados
@@ -99,6 +100,7 @@ export function getGameWords(selectedThemeIds: string[]): {
 
   return {
     secretWord: selection.pair.normal,
+    undercoverWord: selection.pair.undercover,
     themeLabel: selection.themeId,
   };
 }
