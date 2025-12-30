@@ -91,7 +91,8 @@ export function validatePhaseTransition(
     LOBBY: ['ASSIGNMENT'],
     ASSIGNMENT: ['DEBATE'],
     DEBATE: ['VOTING'],
-    VOTING: ['RESULT'],
+    VOTING: ['ELIMINATION', 'RESULT'],
+    ELIMINATION: ['DEBATE', 'RESULT'],
     RESULT: ['LOBBY'], // Reiniciar partida
   };
 
@@ -116,7 +117,8 @@ export function calculateVoteResult(
   players: Player[]
 ): {
   victimId: string;
-  winner: 'citizens' | 'impostor';
+  winner: 'citizens' | 'impostor' | null;
+  shouldContinue: boolean;
   voteCounts: Map<string, number>;
 } {
   // Contar votos
@@ -137,29 +139,65 @@ export function calculateVoteResult(
     }
   }
 
-  // Si nadie tiene votos, no hay víctima (empate o nadie votó)
+  // Si nadie tiene votos, decidir aleatoriamente entre jugadores vivos
   if (!victimId) {
-    // Decidir aleatoriamente entre los jugadores vivos
     const alivePlayers = players.filter((p) => !p.isDead);
     victimId = alivePlayers[Math.floor(Math.random() * alivePlayers.length)].id;
   }
 
-  // Determinar ganador basado en el rol de la víctima
   const victim = players.find((p) => p.id === victimId);
   if (!victim) {
     throw new Error('Víctima no encontrada');
   }
 
-  const winner: 'citizens' | 'impostor' =
-    victim.role === 'impostor' ? 'citizens' : 'impostor';
+  // Simular muerte de la víctima para calcular condiciones de victoria
+  const updatedPlayers = players.map(p =>
+    p.id === victimId ? { ...p, isDead: true } : p
+  );
+
+  const livingPlayers = updatedPlayers.filter(p => !p.isDead);
+  const livingImpostors = updatedPlayers.filter(p => !p.isDead && p.role === 'impostor');
+  const livingCitizens = updatedPlayers.filter(p => !p.isDead && p.role !== 'impostor');
+
+  let winner: 'citizens' | 'impostor' | null = null;
+  let shouldContinue = true;
+
+  if (victim.role === 'impostor') {
+    // Eliminaron a un impostor
+    if (livingImpostors.length === 0) {
+      // Todos los impostores eliminados → Ciudadanos ganan
+      winner = 'citizens';
+      shouldContinue = false;
+    } else {
+      // Todavía hay impostores → Continuar
+      shouldContinue = true;
+    }
+  } else {
+    // Eliminaron a un ciudadano o undercover
+    if (livingPlayers.length <= 2) {
+      // Quedan 2 o menos jugadores → Impostor gana
+      winner = 'impostor';
+      shouldContinue = false;
+    } else if (livingImpostors.length >= livingCitizens.length) {
+      // Impostores igualan o superan a ciudadanos → Impostor gana
+      winner = 'impostor';
+      shouldContinue = false;
+    } else {
+      // El juego continúa
+      shouldContinue = true;
+    }
+  }
 
   console.log(
-    `🗳️  Resultado votación: ${victim.name} eliminado (${victim.role}). Ganador: ${winner}`
+    `🗳️  Resultado: ${victim.name} eliminado (${victim.role}). ` +
+    `Vivos: ${livingPlayers.length} (${livingImpostors.length} impostores). ` +
+    `${shouldContinue ? 'Continuar' : `Ganador: ${winner}`}`
   );
 
   return {
     victimId,
     winner,
+    shouldContinue,
     voteCounts,
   };
 }

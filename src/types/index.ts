@@ -1,6 +1,6 @@
 // Tipos compartidos entre cliente y servidor
 
-export type OnlinePhase = 'LOBBY' | 'ASSIGNMENT' | 'DEBATE' | 'VOTING' | 'RESULT';
+export type OnlinePhase = 'LOBBY' | 'ASSIGNMENT' | 'DEBATE' | 'VOTING' | 'ELIMINATION' | 'RESULT';
 export type Role = 'citizen' | 'impostor' | 'undercover';
 
 export interface GameConfig {
@@ -33,6 +33,7 @@ export interface RoomData {
   createdAt: number;    // Timestamp de creación
   lastActivity: number; // Timestamp de última actividad
   gameConfig?: GameConfig;  // Opcional para backward compatibility
+  eliminationData?: EliminationData; // Datos del jugador eliminado
 }
 
 export interface ValidationResult {
@@ -57,6 +58,14 @@ export interface VotingState {
   votes: VoteInfo[];
   totalVoters: number;
   voteCount: number;
+}
+
+export interface EliminationData {
+  victimId: string;
+  victimName: string;
+  victimRole: Role;
+  victimAvatar?: string;
+  victimColor?: string;
 }
 
 // Eventos Socket.IO (para documentación y type safety)

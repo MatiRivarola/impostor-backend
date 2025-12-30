@@ -246,19 +246,49 @@ export function setupSocketHandlers(
         const alivePlayers = room.players.filter(p => !p.isDead);
 
         // NEW: Broadcast voting state
+        const votesInfo = await roomService.getVotesInfo(code);
         io.to(code).emit('voting_state', {
-          votes: await roomService.getVotesInfo(code),
+          votes: votesInfo,
           totalVoters: alivePlayers.length,
-          voteCount: votes.size,
+          voteCount: votesInfo.length,
         });
 
         if (votes.size === alivePlayers.length) {
-          const { winner } = gameService.calculateVoteResult(votes, room.players);
+          const { victimId, winner, shouldContinue } = gameService.calculateVoteResult(votes, room.players);
 
-          await roomService.updateRoom(code, {
-            winner,
-            phase: 'RESULT',
-          });
+          // Marcar jugador como muerto
+          await roomService.updatePlayer(code, victimId, { isDead: true });
+
+          // Obtener datos de la víctima para la pantalla de eliminación
+          const victim = room.players.find(p => p.id === victimId);
+          if (!victim) return;
+
+          if (shouldContinue) {
+            // El juego continúa → ir a ELIMINATION, luego volverá a DEBATE
+            await roomService.updateRoom(code, {
+              phase: 'ELIMINATION',
+              eliminationData: {
+                victimId: victim.id,
+                victimName: victim.name,
+                victimRole: victim.role,
+                victimAvatar: victim.avatar,
+                victimColor: victim.color,
+              },
+            });
+          } else {
+            // El juego terminó → ir a RESULT
+            await roomService.updateRoom(code, {
+              winner,
+              phase: 'RESULT',
+              eliminationData: {
+                victimId: victim.id,
+                victimName: victim.name,
+                victimRole: victim.role,
+                victimAvatar: victim.avatar,
+                victimColor: victim.color,
+              },
+            });
+          }
 
           await roomService.clearVotes(code);
 
@@ -267,7 +297,7 @@ export function setupSocketHandlers(
             io.to(code).emit('room_updated', updatedRoom);
           }
 
-          console.log(`🏆 Votación completa en sala ${code}. Ganador: ${winner}`);
+          console.log(`🏆 Votación completa en sala ${code}. ${shouldContinue ? 'Continuar juego' : `Ganador: ${winner}`}`);
         } else {
           console.log(
             `🗳️  Voto registrado en sala ${code}. ${votes.size}/${alivePlayers.length}`
