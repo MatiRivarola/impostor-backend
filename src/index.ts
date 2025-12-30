@@ -6,6 +6,7 @@ import { config, validateConfig } from './config/env';
 import { redis, connectRedis, disconnectRedis } from './config/redis';
 import { setupSocketHandlers } from './controllers/socketController';
 import { ClientToServerEvents, ServerToClientEvents } from './types';
+import * as timerService from './services/timerService';
 
 // Validar configuración
 validateConfig();
@@ -77,6 +78,9 @@ async function start() {
     // Configurar handlers de Socket.IO
     setupSocketHandlers(io);
 
+    // Iniciar timer global para todas las salas
+    timerService.startGlobalTimerProcess(io);
+
     // Iniciar servidor HTTP (escuchar en 0.0.0.0 para permitir conexiones externas)
     httpServer.listen(config.port, '0.0.0.0', () => {
       console.log('');
@@ -115,6 +119,9 @@ process.on('SIGINT', async () => {
 async function shutdown() {
   try {
     console.log('🔄 Cerrando conexiones...');
+
+    // Detener timer global
+    timerService.stopGlobalTimerProcess();
 
     // Cerrar servidor HTTP
     httpServer.close(() => {

@@ -366,3 +366,10 @@ export async function getVotesInfo(code: string): Promise<any[]> {
 export async function clearVotes(code: string): Promise<void> {
   await redis.del(`room:${code}:votes`);
 }
+
+/**
+ * Obtiene todos los códigos de salas activas
+ */
+export async function getAllActiveRoomCodes(): Promise<string[]> {
+  return await redis.smembers('active_rooms');
+}

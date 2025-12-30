@@ -9,6 +9,7 @@ import * as roomService from '../services/roomService';
 import * as gameService from '../services/gameService';
 import * as playerService from '../services/playerService';
 import * as validator from '../validators/gameValidator';
+import * as timerService from '../services/timerService';
 
 type TypedSocket = Socket<ClientToServerEvents, ServerToClientEvents>;
 
@@ -183,6 +184,16 @@ export function setupSocketHandlers(
         // Actualizar fase
         await roomService.updateRoom(code, { phase: nextPhase });
 
+        // Si entramos a DEBATE, iniciar timer
+        if (nextPhase === 'DEBATE') {
+          await timerService.startDebateTimer(code, 180); // 3 minutos
+        }
+
+        // Si salimos de DEBATE, detener timer
+        if (room.phase === 'DEBATE' && nextPhase !== 'DEBATE') {
+          await timerService.stopDebateTimer(code);
+        }
+
         const updatedRoom = await roomService.getRoom(code);
         if (!updatedRoom) return;
 
@@ -254,7 +265,31 @@ export function setupSocketHandlers(
         });
 
         if (votes.size === alivePlayers.length) {
-          const { victimId, winner, shouldContinue } = gameService.calculateVoteResult(votes, room.players);
+          const { victimId, winner, shouldContinue, isTie, tiedPlayers } = gameService.calculateVoteResult(votes, room.players);
+
+          // CASO 1: EMPATE - No eliminar a nadie, limpiar votos y avisar
+          if (isTie) {
+            await roomService.clearVotes(code);
+
+            // Notificar empate a todos
+            io.to(code).emit('vote_tie', {
+              tiedPlayers,
+              message: 'Empate en la votación. Vuelvan a votar.',
+            });
+
+            // Resetear estado de votación
+            io.to(code).emit('voting_state', {
+              votes: [],
+              totalVoters: alivePlayers.length,
+              voteCount: 0,
+            });
+
+            console.log(`⚖️  EMPATE en sala ${code}. Revotación requerida.`);
+            return;
+          }
+
+          // CASO 2: HAY GANADOR - Proceder con eliminación
+          if (!victimId) return;
 
           // Marcar jugador como muerto
           await roomService.updatePlayer(code, victimId, { isDead: true });
@@ -359,6 +394,36 @@ export function setupSocketHandlers(
       } catch (error: any) {
         console.error('❌ Error al reiniciar juego:', error);
         socket.emit('error_msg', 'Error al reiniciar juego');
+      }
+    });
+
+    // ==================== ADD DEBATE TIME ====================
+    socket.on('add_debate_time', async ({ code, seconds }) => {
+      try {
+        const room = await roomService.getRoom(code);
+        if (!room) {
+          socket.emit('error_msg', 'Sala no encontrada');
+          return;
+        }
+
+        if (room.phase !== 'DEBATE') {
+          socket.emit('error_msg', 'Solo se puede añadir tiempo en fase de debate');
+          return;
+        }
+
+        // Añadir tiempo (típicamente 60 segundos)
+        await timerService.addDebateTime(code, seconds || 60);
+
+        const updatedRoom = await roomService.getRoom(code);
+        if (!updatedRoom) return;
+
+        // Broadcast
+        io.to(code).emit('room_updated', updatedRoom);
+
+        console.log(`⏱️  ${seconds || 60}s añadidos al timer de sala ${code}`);
+      } catch (error: any) {
+        console.error('❌ Error al añadir tiempo:', error);
+        socket.emit('error_msg', 'Error al añadir tiempo');
       }
     });
 

@@ -116,10 +116,12 @@ export function calculateVoteResult(
   votes: Map<string, string>,
   players: Player[]
 ): {
-  victimId: string;
+  victimId: string | null;
   winner: 'citizens' | 'impostor' | null;
   shouldContinue: boolean;
   voteCounts: Map<string, number>;
+  isTie: boolean;
+  tiedPlayers: string[];
 } {
   // Contar votos
   const voteCounts = new Map<string, number>();
@@ -128,18 +130,38 @@ export function calculateVoteResult(
     voteCounts.set(votedId, (voteCounts.get(votedId) || 0) + 1);
   }
 
-  // Encontrar al más votado
+  // Encontrar al más votado y detectar empates
   let maxVotes = 0;
-  let victimId = '';
+  const playersWithMaxVotes: string[] = [];
 
   for (const [playerId, count] of voteCounts.entries()) {
     if (count > maxVotes) {
       maxVotes = count;
-      victimId = playerId;
+      playersWithMaxVotes.length = 0;
+      playersWithMaxVotes.push(playerId);
+    } else if (count === maxVotes && count > 0) {
+      playersWithMaxVotes.push(playerId);
     }
   }
 
+  // Detectar empate
+  const isTie = playersWithMaxVotes.length > 1;
+
+  // Si hay empate, NO eliminar a nadie
+  if (isTie) {
+    console.log(`⚖️  EMPATE: ${playersWithMaxVotes.length} jugadores empatados con ${maxVotes} votos cada uno`);
+    return {
+      victimId: null,
+      winner: null,
+      shouldContinue: true,
+      voteCounts,
+      isTie: true,
+      tiedPlayers: playersWithMaxVotes,
+    };
+  }
+
   // Si nadie tiene votos, decidir aleatoriamente entre jugadores vivos
+  let victimId = playersWithMaxVotes[0] || '';
   if (!victimId) {
     const alivePlayers = players.filter((p) => !p.isDead);
     victimId = alivePlayers[Math.floor(Math.random() * alivePlayers.length)].id;
@@ -199,6 +221,8 @@ export function calculateVoteResult(
     winner,
     shouldContinue,
     voteCounts,
+    isTie: false,
+    tiedPlayers: [],
   };
 }
 

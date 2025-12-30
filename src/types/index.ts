@@ -34,6 +34,8 @@ export interface RoomData {
   lastActivity: number; // Timestamp de última actividad
   gameConfig?: GameConfig;  // Opcional para backward compatibility
   eliminationData?: EliminationData; // Datos del jugador eliminado
+  debateTimeRemaining?: number; // Segundos restantes del debate (sincronizado)
+  debateTimerActive?: boolean;  // Si el timer está activo
 }
 
 export interface ValidationResult {
@@ -77,6 +79,11 @@ export interface ServerToClientEvents {
   // Real-time voting events
   vote_cast: (data: VoteInfo) => void;
   voting_state: (data: VotingState) => void;
+  vote_tie: (data: { tiedPlayers: string[]; message: string }) => void;
+
+  // Timer events
+  timer_update: (data: { timeRemaining: number }) => void;
+  timer_expired: (data: { message: string }) => void;
 
   player_disconnected: (data: {
     playerId: string;
@@ -100,5 +107,6 @@ export interface ClientToServerEvents {
   change_phase: (data: { code: string; nextPhase: OnlinePhase }) => void;
   cast_vote: (data: { code: string; votedPlayerId: string }) => void;
   reset_game: (data: { code: string }) => void;
+  add_debate_time: (data: { code: string; seconds: number }) => void;
   reconnect_player: (data: { code: string; playerId: string }) => void;
 }

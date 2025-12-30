@@ -239,13 +239,9 @@ export function validateGameConfig(
   const undercoverCount = config.undercoverCount || 0;
   const totalSpecialRoles = config.impostorCount + undercoverCount;
 
+  // Solo validar que quede al menos 1 ciudadano
   if (totalSpecialRoles >= playerCount) {
     return { valid: false, error: 'Debe haber al menos 1 ciudadano' };
-  }
-
-  const maxSpecialRoles = Math.floor(playerCount * 0.6); // Max 60%
-  if (totalSpecialRoles > maxSpecialRoles) {
-    return { valid: false, error: `Máximo ${maxSpecialRoles} roles especiales` };
   }
 
   const validModes = ['classic', 'chaos', 'hardcore'];
