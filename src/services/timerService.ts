@@ -2,17 +2,37 @@ import { Server } from 'socket.io';
 import * as roomService from './roomService';
 import { RoomData } from '../types';
 
-const DEBATE_DURATION = 180; // 3 minutos en segundos
 const TIMER_INTERVAL = 1000; // Actualizar cada segundo
 
 let timerInterval: NodeJS.Timeout | null = null;
 
 /**
+ * Calcula el tiempo de debate basado en la cantidad de jugadores
+ * - 3-4 jugadores: 120 segundos (2 min)
+ * - 5-6 jugadores: 180 segundos (3 min)
+ * - 7-8 jugadores: 240 segundos (4 min)
+ * - 9+ jugadores: 300 segundos (5 min)
+ */
+export function calculateDebateTime(playerCount: number): number {
+  if (playerCount <= 4) return 120; // 2 min
+  if (playerCount <= 6) return 180; // 3 min
+  if (playerCount <= 8) return 240; // 4 min
+  return 300; // 5 min
+}
+
+/**
  * Inicia el timer de debate para una sala
  */
-export async function startDebateTimer(code: string, duration: number = DEBATE_DURATION): Promise<void> {
+export async function startDebateTimer(code: string, duration?: number): Promise<void> {
+  const room = await roomService.getRoom(code);
+  if (!room) return;
+
+  // Si no se especifica duración, calcular basado en cantidad de jugadores vivos
+  const alivePlayers = room.players.filter(p => !p.isDead);
+  const calculatedDuration = duration || calculateDebateTime(alivePlayers.length);
+
   await roomService.updateRoom(code, {
-    debateTimeRemaining: duration,
+    debateTimeRemaining: calculatedDuration,
     debateTimerActive: true,
   });
 }

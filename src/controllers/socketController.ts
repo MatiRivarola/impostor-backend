@@ -184,9 +184,9 @@ export function setupSocketHandlers(
         // Actualizar fase
         await roomService.updateRoom(code, { phase: nextPhase });
 
-        // Si entramos a DEBATE, iniciar timer
+        // Si entramos a DEBATE, iniciar timer con tiempo adaptativo
         if (nextPhase === 'DEBATE') {
-          await timerService.startDebateTimer(code, 180); // 3 minutos
+          await timerService.startDebateTimer(code); // Calcula automáticamente según jugadores
         }
 
         // Si salimos de DEBATE, detener timer
@@ -417,13 +417,106 @@ export function setupSocketHandlers(
         const updatedRoom = await roomService.getRoom(code);
         if (!updatedRoom) return;
 
-        // Broadcast
+        // Broadcast del room actualizado
         io.to(code).emit('room_updated', updatedRoom);
+
+        // También emitir timer_update para sincronización inmediata
+        io.to(code).emit('timer_update', {
+          timeRemaining: updatedRoom.debateTimeRemaining || 0,
+        });
 
         console.log(`⏱️  ${seconds || 60}s añadidos al timer de sala ${code}`);
       } catch (error: any) {
         console.error('❌ Error al añadir tiempo:', error);
         socket.emit('error_msg', 'Error al añadir tiempo');
+      }
+    });
+
+    // ==================== LEAVE ROOM ====================
+    socket.on('leave_room', async ({ code }) => {
+      try {
+        const playerId = await roomService.getPlayerIdBySocketId(code, socket.id);
+        if (!playerId) {
+          socket.emit('error_msg', 'Jugador no encontrado');
+          return;
+        }
+
+        const player = await roomService.getPlayerById(code, playerId);
+        if (!player) return;
+
+        // Remover jugador de la sala
+        await roomService.removePlayerFromRoom(code, playerId);
+
+        // Notificar a otros jugadores
+        const updatedRoom = await roomService.getRoom(code);
+        if (updatedRoom) {
+          io.to(code).emit('room_updated', updatedRoom);
+        }
+
+        // Desconectar al jugador del room
+        socket.leave(code);
+
+        // Confirmar al jugador que salió
+        socket.emit('room_left', { success: true });
+
+        console.log(`👋 ${player.name} salió voluntariamente de sala ${code}`);
+      } catch (error: any) {
+        console.error('❌ Error al salir de sala:', error);
+        socket.emit('error_msg', 'Error al salir de sala');
+      }
+    });
+
+    // ==================== KICK PLAYER ====================
+    socket.on('kick_player', async ({ code, playerId: targetPlayerId }) => {
+      try {
+        const room = await roomService.getRoom(code);
+        if (!room) {
+          socket.emit('error_msg', 'Sala no encontrada');
+          return;
+        }
+
+        // Verificar que quien expulsa es el host
+        const kickerPlayerId = await roomService.getPlayerIdBySocketId(code, socket.id);
+        if (!kickerPlayerId || kickerPlayerId !== room.hostId) {
+          socket.emit('error_msg', 'Solo el anfitrión puede expulsar jugadores');
+          return;
+        }
+
+        // No puede expulsarse a sí mismo
+        if (targetPlayerId === room.hostId) {
+          socket.emit('error_msg', 'No puedes expulsarte a ti mismo');
+          return;
+        }
+
+        const targetPlayer = await roomService.getPlayerById(code, targetPlayerId);
+        if (!targetPlayer) {
+          socket.emit('error_msg', 'Jugador no encontrado');
+          return;
+        }
+
+        // Notificar al jugador expulsado
+        const targetSockets = await io.in(code).fetchSockets();
+        const targetSocket = targetSockets.find(s => s.id === targetPlayer.socketId);
+        if (targetSocket) {
+          targetSocket.emit('player_kicked', {
+            message: 'Has sido expulsado de la sala por el anfitrión',
+          });
+          targetSocket.leave(code);
+        }
+
+        // Remover jugador de la sala
+        await roomService.removePlayerFromRoom(code, targetPlayerId);
+
+        // Notificar a otros jugadores
+        const updatedRoom = await roomService.getRoom(code);
+        if (updatedRoom) {
+          io.to(code).emit('room_updated', updatedRoom);
+        }
+
+        console.log(`🚫 ${targetPlayer.name} fue expulsado de sala ${code} por el host`);
+      } catch (error: any) {
+        console.error('❌ Error al expulsar jugador:', error);
+        socket.emit('error_msg', 'Error al expulsar jugador');
       }
     });
 

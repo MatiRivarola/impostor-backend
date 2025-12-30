@@ -74,6 +74,7 @@ export interface EliminationData {
 export interface ServerToClientEvents {
   room_joined: (data: { room: RoomData; playerId: string }) => void;
   room_updated: (room: RoomData) => void;
+  room_left: (data: { success: boolean }) => void;
   error_msg: (message: string) => void;
 
   // Real-time voting events
@@ -92,6 +93,7 @@ export interface ServerToClientEvents {
     timeWindow: number;
   }) => void;
   player_reconnected: (data: { playerId: string; playerName: string }) => void;
+  player_kicked: (data: { message: string }) => void;
   host_transferred: (data: {
     newHostId: string;
     newHostName: string;
@@ -108,5 +110,7 @@ export interface ClientToServerEvents {
   cast_vote: (data: { code: string; votedPlayerId: string }) => void;
   reset_game: (data: { code: string }) => void;
   add_debate_time: (data: { code: string; seconds: number }) => void;
+  leave_room: (data: { code: string }) => void;
+  kick_player: (data: { code: string; playerId: string }) => void;
   reconnect_player: (data: { code: string; playerId: string }) => void;
 }
