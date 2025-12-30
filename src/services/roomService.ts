@@ -342,7 +342,14 @@ export async function saveVote(
  */
 export async function getVotes(code: string): Promise<Map<string, string>> {
   const votesData = await redis.hgetall(`room:${code}:votes`);
-  return new Map(Object.entries(votesData));
+  const parsedVotes = new Map<string, string>();
+
+  for (const [voterId, voteInfoJson] of Object.entries(votesData)) {
+    const voteInfo = JSON.parse(voteInfoJson);
+    parsedVotes.set(voterId, voteInfo.votedPlayerId);
+  }
+
+  return parsedVotes;
 }
 
 /**
