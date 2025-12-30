@@ -27,8 +27,8 @@ export function assignPlayerAvatar(
 ): { avatar: string; color: string } {
   if (!roomAvatarCache.has(roomCode)) {
     roomAvatarCache.set(roomCode, {
-      usedEmojis: new Set(existingPlayers.map(p => p.avatar).filter(Boolean)),
-      usedColors: new Set(existingPlayers.map(p => p.color).filter(Boolean)),
+      usedEmojis: new Set(existingPlayers.map(p => p.avatar).filter((x): x is string => x !== undefined)),
+      usedColors: new Set(existingPlayers.map(p => p.color).filter((x): x is string => x !== undefined)),
     });
   }
 

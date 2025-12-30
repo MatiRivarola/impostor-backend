@@ -52,7 +52,8 @@ export function validateChangePhase(
     LOBBY: ['ASSIGNMENT'],
     ASSIGNMENT: ['DEBATE'],
     DEBATE: ['VOTING'],
-    VOTING: ['RESULT'],
+    VOTING: ['ELIMINATION', 'RESULT'],
+    ELIMINATION: ['DEBATE', 'RESULT'],
     RESULT: ['LOBBY'],
   };
 
