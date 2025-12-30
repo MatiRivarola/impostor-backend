@@ -77,8 +77,8 @@ async function start() {
     // Configurar handlers de Socket.IO
     setupSocketHandlers(io);
 
-    // Iniciar servidor HTTP
-    httpServer.listen(config.port, () => {
+    // Iniciar servidor HTTP (escuchar en 0.0.0.0 para permitir conexiones externas)
+    httpServer.listen(config.port, '0.0.0.0', () => {
       console.log('');
       console.log('🚀 ============================================');
       console.log(`🚀 Impostor Cordobés Backend`);
