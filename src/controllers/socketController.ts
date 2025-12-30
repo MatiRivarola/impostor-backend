@@ -92,7 +92,7 @@ export function setupSocketHandlers(
     });
 
     // ==================== START GAME ====================
-    socket.on('start_game', async ({ code }) => {
+    socket.on('start_game', async ({ code, config }) => {
       try {
         const room = await roomService.getRoom(code);
         if (!room) {
@@ -117,14 +117,22 @@ export function setupSocketHandlers(
           return;
         }
 
-        // ASIGNAR ROLES SERVER-SIDE
-        const { players, secretWord } = gameService.assignRoles(room.players);
+        // Validar configuración
+        const configValidation = validator.validateGameConfig(config, room.players.length);
+        if (!configValidation.valid) {
+          socket.emit('error_msg', configValidation.error || 'Configuración inválida');
+          return;
+        }
 
-        // Actualizar sala
+        // ASIGNAR ROLES SERVER-SIDE con configuración
+        const { players, secretWord } = gameService.assignRoles(room.players, config);
+
+        // Actualizar sala con config y resultados
         await roomService.updateRoom(code, {
           players,
           secretWord,
           phase: 'ASSIGNMENT',
+          gameConfig: config,
         });
 
         // Obtener sala actualizada
@@ -134,10 +142,10 @@ export function setupSocketHandlers(
         // Broadcast a todos
         io.to(code).emit('room_updated', updatedRoom);
 
-        console.log(`🎮 Juego iniciado en sala ${code}`);
+        console.log(`🎮 Juego iniciado en sala ${code} con config:`, config);
       } catch (error: any) {
         console.error('❌ Error al iniciar juego:', error);
-        socket.emit('error_msg', 'Error al iniciar juego');
+        socket.emit('error_msg', error.message || 'Error al iniciar juego');
       }
     });
 

@@ -104,6 +104,17 @@ export async function updateRoom(
 
   await redis.hset(`room:${code}`, 'data', JSON.stringify(updatedRoom));
 
+  // CRITICAL FIX: Sincronizar hash de players si fueron actualizados
+  if (updates.players) {
+    for (const player of updates.players) {
+      await redis.hset(
+        `room:${code}:players`,
+        player.id,
+        JSON.stringify(player)
+      );
+    }
+  }
+
   // Renovar TTL
   await redis.expire(`room:${code}`, config.roomTtlActive / 1000);
 }

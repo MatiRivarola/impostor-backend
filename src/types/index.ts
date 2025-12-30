@@ -3,6 +3,12 @@
 export type OnlinePhase = 'LOBBY' | 'ASSIGNMENT' | 'DEBATE' | 'VOTING' | 'RESULT';
 export type Role = 'citizen' | 'impostor';
 
+export interface GameConfig {
+  themes: string[];
+  impostorCount: number;
+  gameMode: 'classic' | 'chaos' | 'hardcore';
+}
+
 export interface Player {
   id: string;           // UUID del jugador
   name: string;
@@ -22,6 +28,7 @@ export interface RoomData {
   winner: 'citizens' | 'impostor' | null;
   createdAt: number;    // Timestamp de creación
   lastActivity: number; // Timestamp de última actividad
+  gameConfig?: GameConfig;  // Opcional para backward compatibility
 }
 
 export interface ValidationResult {
@@ -57,7 +64,7 @@ export interface ServerToClientEvents {
 export interface ClientToServerEvents {
   create_room: (data: { playerName: string }) => void;
   join_room: (data: { code: string; playerName: string }) => void;
-  start_game: (data: { code: string }) => void;
+  start_game: (data: { code: string; config: GameConfig }) => void;
   change_phase: (data: { code: string; nextPhase: OnlinePhase }) => void;
   cast_vote: (data: { code: string; votedPlayerId: string }) => void;
   reset_game: (data: { code: string }) => void;

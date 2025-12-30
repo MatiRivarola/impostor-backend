@@ -1,4 +1,4 @@
-import { Player, OnlinePhase } from '../types';
+import { Player, OnlinePhase, GameConfig } from '../types';
 import { getGameWords } from './wordService';
 
 /**
@@ -6,21 +6,31 @@ import { getGameWords } from './wordService';
  * Los ciudadanos ven la palabra secreta, el impostor NO
  */
 export function assignRoles(
-  players: Player[]
+  players: Player[],
+  config: GameConfig
 ): { players: Player[]; secretWord: string } {
   if (players.length < 2) {
     throw new Error('Se necesitan al menos 2 jugadores');
   }
 
-  // 1. Obtener palabra secreta
-  const { secretWord } = getGameWords(['argentina', 'cordoba', 'comida']);
+  // Validar configuración
+  const maxImpostors = Math.floor(players.length / 2);
+  if (config.impostorCount < 1 || config.impostorCount > maxImpostors) {
+    throw new Error(`Número de impostores inválido (1-${maxImpostors})`);
+  }
 
-  // 2. Seleccionar impostor aleatoriamente
-  const impostorIndex = Math.floor(Math.random() * players.length);
+  // 1. Obtener palabra secreta usando temas configurados
+  const { secretWord } = getGameWords(config.themes);
+
+  // 2. Seleccionar múltiples impostores aleatoriamente
+  const shuffled = [...players].sort(() => Math.random() - 0.5);
+  const impostorIds = new Set(
+    shuffled.slice(0, config.impostorCount).map(p => p.id)
+  );
 
   // 3. Asignar roles y palabras
-  const updatedPlayers = players.map((player, index) => {
-    if (index === impostorIndex) {
+  const updatedPlayers = players.map((player) => {
+    if (impostorIds.has(player.id)) {
       // Impostor: NO ve la palabra
       return {
         ...player,
@@ -39,8 +49,9 @@ export function assignRoles(
     }
   });
 
-  console.log(`🎮 Roles asignados: ${impostorIndex + 1}° jugador es impostor`);
+  console.log(`🎮 Roles asignados: ${config.impostorCount} impostor(es)`);
   console.log(`📝 Palabra secreta: "${secretWord}"`);
+  console.log(`🎨 Temas: ${config.themes.join(', ')}`);
 
   return {
     players: updatedPlayers,

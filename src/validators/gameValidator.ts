@@ -199,3 +199,43 @@ export function validateRoomCode(code: string): ValidationResult {
 
   return { valid: true };
 }
+
+/**
+ * Valida configuración del juego
+ */
+export function validateGameConfig(
+  config: any,
+  playerCount: number
+): ValidationResult {
+  if (!config || typeof config !== 'object') {
+    return { valid: false, error: 'Configuración del juego requerida' };
+  }
+
+  if (!Array.isArray(config.themes) || config.themes.length === 0) {
+    return { valid: false, error: 'Debe seleccionar al menos un tema' };
+  }
+
+  const validThemes = ['argentina', 'cordoba', 'religion', 'farandula', 'comida',
+                       'futbol', 'marcas', 'musica', 'lugares', 'objetos',
+                       'mitos', 'scifi', 'historia'];
+  const invalidThemes = config.themes.filter((t: string) => !validThemes.includes(t));
+  if (invalidThemes.length > 0) {
+    return { valid: false, error: `Temas inválidos: ${invalidThemes.join(', ')}` };
+  }
+
+  if (typeof config.impostorCount !== 'number' || config.impostorCount < 1) {
+    return { valid: false, error: 'Debe haber al menos 1 impostor' };
+  }
+
+  const maxImpostors = Math.floor(playerCount / 2);
+  if (config.impostorCount > maxImpostors) {
+    return { valid: false, error: `Máximo ${maxImpostors} impostores para ${playerCount} jugadores` };
+  }
+
+  const validModes = ['classic', 'chaos', 'hardcore'];
+  if (!validModes.includes(config.gameMode)) {
+    return { valid: false, error: 'Modo de juego inválido' };
+  }
+
+  return { valid: true };
+}
