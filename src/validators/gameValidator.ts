@@ -1,0 +1,201 @@
+import { RoomData, ValidationResult, OnlinePhase } from '../types';
+import { config } from '../config/env';
+
+/**
+ * Valida que un jugador puede iniciar el juego
+ */
+export function validateStartGame(
+  room: RoomData,
+  playerId: string
+): ValidationResult {
+  if (room.hostId !== playerId) {
+    return {
+      valid: false,
+      error: 'Solo el anfitrión puede iniciar el juego',
+    };
+  }
+
+  if (room.players.length < config.minPlayers) {
+    return {
+      valid: false,
+      error: `Mínimo ${config.minPlayers} jugadores requeridos`,
+    };
+  }
+
+  if (room.phase !== 'LOBBY') {
+    return {
+      valid: false,
+      error: 'El juego ya está en curso',
+    };
+  }
+
+  return { valid: true };
+}
+
+/**
+ * Valida que un jugador puede cambiar de fase
+ */
+export function validateChangePhase(
+  room: RoomData,
+  playerId: string,
+  nextPhase: OnlinePhase
+): ValidationResult {
+  if (room.hostId !== playerId) {
+    return {
+      valid: false,
+      error: 'Solo el anfitrión puede cambiar de fase',
+    };
+  }
+
+  // Validar transiciones específicas
+  const validTransitions: Record<OnlinePhase, OnlinePhase[]> = {
+    LOBBY: ['ASSIGNMENT'],
+    ASSIGNMENT: ['DEBATE'],
+    DEBATE: ['VOTING'],
+    VOTING: ['RESULT'],
+    RESULT: ['LOBBY'],
+  };
+
+  const allowed = validTransitions[room.phase] || [];
+  if (!allowed.includes(nextPhase)) {
+    return {
+      valid: false,
+      error: `Transición inválida: ${room.phase} → ${nextPhase}`,
+    };
+  }
+
+  return { valid: true };
+}
+
+/**
+ * Valida que un jugador puede votar
+ */
+export function validateVote(
+  room: RoomData,
+  voterId: string,
+  victimId: string
+): ValidationResult {
+  const voter = room.players.find((p) => p.id === voterId);
+  const victim = room.players.find((p) => p.id === victimId);
+
+  if (!voter) {
+    return {
+      valid: false,
+      error: 'Votante no encontrado',
+    };
+  }
+
+  if (!victim) {
+    return {
+      valid: false,
+      error: 'Jugador votado no encontrado',
+    };
+  }
+
+  if (room.phase !== 'VOTING') {
+    return {
+      valid: false,
+      error: 'No es fase de votación',
+    };
+  }
+
+  if (voter.isDead) {
+    return {
+      valid: false,
+      error: 'Los jugadores eliminados no pueden votar',
+    };
+  }
+
+  if (victim.isDead) {
+    return {
+      valid: false,
+      error: 'No puedes votar a un jugador eliminado',
+    };
+  }
+
+  if (voterId === victimId) {
+    return {
+      valid: false,
+      error: 'No puedes votarte a ti mismo',
+    };
+  }
+
+  return { valid: true };
+}
+
+/**
+ * Valida que un jugador puede reiniciar el juego
+ */
+export function validateResetGame(
+  room: RoomData,
+  playerId: string
+): ValidationResult {
+  if (room.hostId !== playerId) {
+    return {
+      valid: false,
+      error: 'Solo el anfitrión puede reiniciar el juego',
+    };
+  }
+
+  if (room.phase !== 'RESULT') {
+    return {
+      valid: false,
+      error: 'Solo se puede reiniciar desde la fase de resultados',
+    };
+  }
+
+  return { valid: true };
+}
+
+/**
+ * Valida nombre de jugador
+ */
+export function validatePlayerName(name: string): ValidationResult {
+  if (!name || name.trim().length === 0) {
+    return {
+      valid: false,
+      error: 'El nombre no puede estar vacío',
+    };
+  }
+
+  if (name.length > 20) {
+    return {
+      valid: false,
+      error: 'El nombre no puede tener más de 20 caracteres',
+    };
+  }
+
+  // No permitir caracteres especiales peligrosos
+  const dangerousChars = /[<>{}]/;
+  if (dangerousChars.test(name)) {
+    return {
+      valid: false,
+      error: 'El nombre contiene caracteres no permitidos',
+    };
+  }
+
+  return { valid: true };
+}
+
+/**
+ * Valida código de sala
+ */
+export function validateRoomCode(code: string): ValidationResult {
+  if (!code || code.length !== 4) {
+    return {
+      valid: false,
+      error: 'El código debe tener 4 caracteres',
+    };
+  }
+
+  // Solo alfanuméricos
+  const validChars = /^[A-Z0-9]+$/;
+  if (!validChars.test(code)) {
+    return {
+      valid: false,
+      error: 'El código solo puede contener letras y números',
+    };
+  }
+
+  return { valid: true };
+}

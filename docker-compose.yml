@@ -1,0 +1,50 @@
+version: '3.8'
+
+services:
+  redis:
+    image: redis:7-alpine
+    container_name: impostor-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    command: redis-server --appendonly yes
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+    networks:
+      - impostor-network
+
+  backend:
+    build: .
+    container_name: impostor-backend
+    ports:
+      - "3001:3001"
+    environment:
+      - NODE_ENV=development
+      - REDIS_URL=redis://redis:6379
+      - CORS_ORIGIN=http://localhost:5173
+      - PORT=3001
+      - MIN_PLAYERS=3
+      - MAX_PLAYERS=10
+      - ROOM_TTL_ACTIVE=7200000
+      - ROOM_TTL_INACTIVE=900000
+      - PLAYER_RECONNECT_WINDOW=300000
+    depends_on:
+      redis:
+        condition: service_healthy
+    volumes:
+      - ./src:/app/src
+      - /app/node_modules
+    command: npm run dev
+    networks:
+      - impostor-network
+
+volumes:
+  redis_data:
+
+networks:
+  impostor-network:
+    driver: bridge
