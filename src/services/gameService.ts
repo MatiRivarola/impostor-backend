@@ -29,19 +29,20 @@ export function assignRoles(
     throw new Error('Debe haber al menos 1 ciudadano');
   }
 
-  // 2. Seleccionar roles aleatoriamente
-  const shuffled = [...players].sort(() => Math.random() - 0.5);
+  // 2. Mezclar jugadores aleatoriamente (orden de arranque)
+  const shuffledPlayers = [...players].sort(() => Math.random() - 0.5);
 
+  // 3. Seleccionar roles aleatoriamente del orden mezclado
   const impostorIds = new Set(
-    shuffled.slice(0, config.impostorCount).map(p => p.id)
+    shuffledPlayers.slice(0, config.impostorCount).map(p => p.id)
   );
 
   const undercoverIds = new Set(
-    shuffled.slice(config.impostorCount, config.impostorCount + undercoverCount).map(p => p.id)
+    shuffledPlayers.slice(config.impostorCount, config.impostorCount + undercoverCount).map(p => p.id)
   );
 
-  // 3. Asignar roles y palabras
-  const updatedPlayers = players.map((player) => {
+  // 4. Asignar roles y palabras manteniendo el orden aleatorio
+  const updatedPlayers = shuffledPlayers.map((player) => {
     if (impostorIds.has(player.id)) {
       // Impostor: NO ve la palabra
       return {
@@ -72,6 +73,7 @@ export function assignRoles(
   console.log(`🎮 Roles: ${config.impostorCount} impostor(es), ${undercoverCount} undercover`);
   console.log(`📝 Palabra secreta: "${secretWord}" | Undercover: "${undercoverWord}"`);
   console.log(`🎨 Temas: ${config.themes.join(', ')}`);
+  console.log(`🔀 Orden de jugadores mezclado: ${updatedPlayers.map(p => p.name).join(', ')}`);
 
   return {
     players: updatedPlayers,

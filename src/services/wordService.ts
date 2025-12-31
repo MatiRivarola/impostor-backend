@@ -7,6 +7,69 @@ interface WordPair {
 
 // Pool completo de palabras (sincronizado con frontend)
 const WORD_LISTS: Record<string, WordPair[]> = {
+  memes_argentinos: [
+    // --- Personajes Icónicos ---
+    { normal: 'Ricardo Fort', undercover: 'Chocolate' },
+    { normal: 'El Comandante', undercover: 'General' },
+    { normal: 'Samid', undercover: 'Mauro Viale' },
+    { normal: 'Atendedor de Boludos', undercover: 'Inspector de Línea' },
+    { normal: 'El Gigoló', undercover: 'Estafador' },
+    { normal: 'July3p', undercover: 'Youtuber' },
+    { normal: 'El Bananero', undercover: 'Harry Potter' },
+    { normal: 'Zulma Lobato', undercover: 'Vedette' },
+    { normal: 'La Chabona', undercover: 'Abogada' },
+    { normal: 'El Facha', undercover: 'Turro' },
+
+    // --- Frases y Momentos Virales ---
+    { normal: 'Hermosa Mañana', undercover: 'Francella' },
+    { normal: 'Alto Guiso', undercover: '15 Pesos' },
+    { normal: 'Y Candela?', undercover: 'La Moto' },
+    { normal: 'Un Elissir', undercover: 'Blue Label' },
+    { normal: 'Messirve', undercover: 'Pulgar Arriba' },
+    { normal: 'Andá pa allá bobo', undercover: 'Periodista' },
+    { normal: 'Traeme la Copa', undercover: 'Obelisco' },
+    { normal: 'Esto se va a descontrolar', undercover: 'Caída' },
+    { normal: 'Chinwenwencha', undercover: 'Sinvergüenza' },
+    { normal: 'Barassi', undercover: 'Raro' },
+
+    // --- Selección y Fútbol (La Scaloneta) ---
+    { normal: 'Dibu Martínez', undercover: 'Loco' },
+    { normal: 'Abuela la la la', undercover: 'Festejo' },
+    { normal: 'Scaloneta', undercover: 'Ferrari' },
+    { normal: 'Papu Gómez', undercover: 'Beckham' },
+
+    // --- TV y Cultura Bizara ---
+    { normal: 'Crónica TV', undercover: 'Placa Roja' },
+    { normal: 'Okupas', undercover: 'Pollo' },
+    { normal: 'Los Simuladores', undercover: 'Operativo' },
+    { normal: 'Teto Medina', undercover: 'Humo' },
+    { normal: 'Las Pastillas del Abuelo', undercover: 'Maradona' },
+    { normal: 'Pity Álvarez', undercover: 'Fuego' },
+
+    // --- Actualidad "Memeable" ---
+    { normal: 'Horno de Barro', undercover: 'Pizzero' },
+    { normal: 'Mylazyan', undercover: 'Milanesa' },
+    { normal: 'Nordelta', undercover: 'Carpincho' },
+    { normal: 'Fábrica de Pastas', undercover: 'Ñoqui' },
+    { normal: 'Trapito', undercover: 'Estacionamiento' },
+    { normal: 'Visto', undercover: 'Clavado' },
+
+    // --- Extras ---
+    { normal: 'AFIP', undercover: 'Ladrón' },
+    { normal: 'No es Coca Papi', undercover: 'Coca-Cola' },
+    { normal: 'Tinelli', undercover: 'Lunes' },
+    { normal: 'Batakis', undercover: 'Emoji' },
+    { normal: 'Galperin', undercover: 'Mercado Libre' },
+    { normal: 'Manaos', undercover: 'Veneno' },
+    { normal: 'El Diego', undercover: 'Dios' },
+    { normal: 'Mirtha', undercover: 'Dinosaurio' },
+    { normal: 'Boca Juniors', undercover: 'Gallina' },
+    { normal: 'River Plate', undercover: 'Pato' },
+    { normal: 'Perón', undercover: 'Fantasma' },
+    { normal: 'La Pesada', undercover: 'Mochila' },
+    { normal: 'Guarda con el Quemado', undercover: 'Limón' },
+    { normal: 'Y Bueno', undercover: 'Dale' },
+  ],
   argentina: [
     { normal: 'Mate', undercover: 'Pasto' },
     { normal: 'Asado', undercover: 'Reunión' },

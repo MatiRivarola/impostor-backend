@@ -216,7 +216,7 @@ export function validateGameConfig(
     return { valid: false, error: 'Debe seleccionar al menos un tema' };
   }
 
-  const validThemes = ['argentina', 'cordoba', 'religion', 'farandula', 'comida',
+  const validThemes = ['argentina', 'cordoba', 'memes_argentinos', 'religion', 'farandula', 'comida',
                        'futbol', 'marcas', 'musica', 'lugares', 'objetos',
                        'mitos', 'scifi', 'historia'];
   const invalidThemes = config.themes.filter((t: string) => !validThemes.includes(t));
